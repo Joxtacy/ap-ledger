@@ -10,7 +10,15 @@ from rich.text import Text
 from textual.app import App, ComposeResult
 from textual.binding import Binding
 from textual.containers import Horizontal
-from textual.widgets import DataTable, Footer, Header, Input, RichLog, TabbedContent, TabPane
+from textual.widgets import (
+    DataTable,
+    Footer,
+    Header,
+    Input,
+    RichLog,
+    TabbedContent,
+    TabPane,
+)
 
 from .events import (
     Event,
@@ -109,7 +117,11 @@ class TextClientApp(App):
         self.names = names
         self.slot_label = slot_label
         self.protocol = protocol
-        self._paused: dict[str, bool] = {"sent": False, "received": False, "status": False}
+        self._paused: dict[str, bool] = {
+            "sent": False,
+            "received": False,
+            "status": False,
+        }
         self._latest_hints: tuple[HintRow, ...] = ()
 
     def compose(self) -> ComposeResult:
@@ -132,7 +144,9 @@ class TextClientApp(App):
     def on_mount(self) -> None:
         self.query_one("#sent", RichLog).border_title = "Sent"
         self.query_one("#received", RichLog).border_title = "Received"
-        self.query_one("#status", RichLog).border_title = f"Status \u2014 {self.slot_label}"
+        self.query_one(
+            "#status", RichLog
+        ).border_title = f"Status \u2014 {self.slot_label}"
         table = self.query_one("#hints", DataTable)
         table.add_column("Dir", width=3)
         table.add_column("Item", width=30)
@@ -220,7 +234,9 @@ class TextClientApp(App):
             self._emit_local_status("error", "not connected; command dropped")
 
     def _emit_local_status(self, kind: str, text: str) -> None:
-        self.state.status.put_nowait(StatusEvent(ts=datetime.now(), kind=kind, text=text))
+        self.state.status.put_nowait(
+            StatusEvent(ts=datetime.now(), kind=kind, text=text)
+        )
 
     async def _pump_events(self) -> None:
         while True:
@@ -243,14 +259,18 @@ class TextClientApp(App):
             if self._paused["sent"]:
                 return
             log = self.query_one("#sent", RichLog)
-            log.write(f"[dim]{_fmt_ts(event.ts)}[/] {_fmt_item(event.item, self.names)}")
+            log.write(
+                f"[dim]{_fmt_ts(event.ts)}[/] {_fmt_item(event.item, self.names)}"
+            )
             log.write(f"    \u2192 {_fmt_player(event.item.receiver_slot, self.names)}")
             log.write(f"    @ {_fmt_location(event.item, self.names)}")
         elif isinstance(event, ReceivedEvent):
             if self._paused["received"]:
                 return
             log = self.query_one("#received", RichLog)
-            log.write(f"[dim]{_fmt_ts(event.ts)}[/] {_fmt_item(event.item, self.names)}")
+            log.write(
+                f"[dim]{_fmt_ts(event.ts)}[/] {_fmt_item(event.item, self.names)}"
+            )
             log.write(f"    \u2190 {_fmt_player(event.item.sender_slot, self.names)}")
             log.write(f"    @ {_fmt_location(event.item, self.names)}")
         elif isinstance(event, HintsUpdated):
@@ -271,19 +291,26 @@ class TextClientApp(App):
 
         # pending first, then alphabetical by item name
         def sort_key(h: HintRow) -> tuple[int, str]:
-            return (1 if h.found else 0, self.names.item_name(h.item_id, h.receiving_slot).lower())
+            return (
+                1 if h.found else 0,
+                self.names.item_name(h.item_id, h.receiving_slot).lower(),
+            )
 
         for hint in sorted(hints, key=sort_key):
             direction = "\u2190" if hint.receiving_slot == my_slot else "\u2192"
-            item_name = rich_escape(self.names.item_name(hint.item_id, hint.receiving_slot))
+            item_name = rich_escape(
+                self.names.item_name(hint.item_id, hint.receiving_slot)
+            )
             item_markup = f"[{_item_color(hint.item_flags)}]{flag_prefix(hint.item_flags)}{item_name}[/]"
             if hint.found:
                 item_markup = f"[strike dim]{item_markup}[/]"
-            other_slot = hint.finding_slot if hint.receiving_slot == my_slot else hint.receiving_slot
-            other_markup = _fmt_player(other_slot, self.names)
-            location_markup = (
-                f"[green]{rich_escape(self.names.location_name(hint.location_id, hint.finding_slot))}[/]"
+            other_slot = (
+                hint.finding_slot
+                if hint.receiving_slot == my_slot
+                else hint.receiving_slot
             )
+            other_markup = _fmt_player(other_slot, self.names)
+            location_markup = f"[green]{rich_escape(self.names.location_name(hint.location_id, hint.finding_slot))}[/]"
             status_label = hint_status_label(hint.status)
             status_markup = f"[{hint_status_color(hint.status)}]{status_label}[/]"
             if hint.found and hint.status != HintStatus.FOUND:

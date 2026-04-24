@@ -23,8 +23,12 @@ class GameNames:
     @classmethod
     def from_game_data(cls, game_data: dict) -> "GameNames":
         return cls(
-            item_id_to_name={v: k for k, v in game_data.get("item_name_to_id", {}).items()},
-            location_id_to_name={v: k for k, v in game_data.get("location_name_to_id", {}).items()},
+            item_id_to_name={
+                v: k for k, v in game_data.get("item_name_to_id", {}).items()
+            },
+            location_id_to_name={
+                v: k for k, v in game_data.get("location_name_to_id", {}).items()
+            },
             checksum=game_data.get("checksum", ""),
         )
 
@@ -91,7 +95,8 @@ class Names:
 
     def consume_slot_info(self, slot_info: dict) -> None:
         self.players.slot_to_game = {
-            int(slot): info.get("game", ARCHIPELAGO_GAME) for slot, info in slot_info.items()
+            int(slot): info.get("game", ARCHIPELAGO_GAME)
+            for slot, info in slot_info.items()
         }
         existing = dict(self.players.slot_to_alias)
         for slot, info in slot_info.items():
@@ -100,7 +105,9 @@ class Names:
 
     def consume_players(self, players: list[dict]) -> None:
         for p in players:
-            self.players.slot_to_alias[int(p["slot"])] = p.get("alias") or p.get("name", f"Player #{p['slot']}")
+            self.players.slot_to_alias[int(p["slot"])] = p.get("alias") or p.get(
+                "name", f"Player #{p['slot']}"
+            )
 
     def item_name(self, item_id: int, receiver_slot: int) -> str:
         """Item IDs live in the receiver's game namespace."""

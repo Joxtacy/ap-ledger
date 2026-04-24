@@ -65,7 +65,11 @@ class CommandSuggester(Suggester):
 
         player, remainder = rest.split(" ", 1)
         target_slot = next(
-            (slot for slot, alias in self.names.players.slot_to_alias.items() if alias == player),
+            (
+                slot
+                for slot, alias in self.names.players.slot_to_alias.items()
+                if alias == player
+            ),
             None,
         )
         if target_slot is None or not remainder:

@@ -5,7 +5,7 @@ import json
 import logging
 import ssl
 import uuid
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 from urllib.parse import urlparse
@@ -13,7 +13,6 @@ from urllib.parse import urlparse
 import websockets
 from websockets.client import WebSocketClientProtocol
 
-from . import __version__
 from .events import (
     Event,
     HintRow,
@@ -117,7 +116,9 @@ class ProtocolClient:
         while not self._stop.is_set():
             try:
                 await self._emit_status("connecting", f"connecting to {url}")
-                ssl_ctx = ssl.create_default_context() if url.startswith("wss://") else None
+                ssl_ctx = (
+                    ssl.create_default_context() if url.startswith("wss://") else None
+                )
                 async with websockets.connect(
                     url,
                     ssl=ssl_ctx,
@@ -188,7 +189,9 @@ class ProtocolClient:
         elif cmd == "SetReply":
             await self._handle_set_reply(packet)
 
-    async def _handle_room_info(self, packet: dict, ws: WebSocketClientProtocol) -> None:
+    async def _handle_room_info(
+        self, packet: dict, ws: WebSocketClientProtocol
+    ) -> None:
         self.state.seed_name = packet.get("seed_name", "")
         checksums: dict[str, str] = packet.get("datapackage_checksums", {}) or {}
         missing = self.names.missing_games(checksums)
@@ -197,7 +200,9 @@ class ProtocolClient:
         else:
             await self._send_connect(ws)
 
-    async def _handle_data_package(self, packet: dict, ws: WebSocketClientProtocol) -> None:
+    async def _handle_data_package(
+        self, packet: dict, ws: WebSocketClientProtocol
+    ) -> None:
         games = packet.get("data", {}).get("games", {})
         for game, game_data in games.items():
             self.names.store(game, game_data)
@@ -217,7 +222,9 @@ class ProtocolClient:
         }
         await self._send(ws, [connect])
 
-    async def _handle_connected(self, packet: dict, ws: WebSocketClientProtocol) -> None:
+    async def _handle_connected(
+        self, packet: dict, ws: WebSocketClientProtocol
+    ) -> None:
         self.state.team = packet.get("team", 0)
         self.state.my_slot = packet.get("slot", -1)
         self.names.players.my_slot = self.state.my_slot
@@ -231,10 +238,13 @@ class ProtocolClient:
         )
         # subscribe to the server-side hints list for this (team, slot)
         hints_key = self._hints_key()
-        await self._send(ws, [
-            {"cmd": "Get", "keys": [hints_key]},
-            {"cmd": "SetNotify", "keys": [hints_key]},
-        ])
+        await self._send(
+            ws,
+            [
+                {"cmd": "Get", "keys": [hints_key]},
+                {"cmd": "SetNotify", "keys": [hints_key]},
+            ],
+        )
 
     def _hints_key(self) -> str:
         return f"_read_hints_{self.state.team}_{self.state.my_slot}"
@@ -304,7 +314,9 @@ class ProtocolClient:
         if ptype in ("CommandResult", "AdminCommandResult"):
             text = _flatten_data(packet.get("data", []))
             if text:
-                await self._emit_status(ptype.replace("CommandResult", "cmd").lower(), text)
+                await self._emit_status(
+                    ptype.replace("CommandResult", "cmd").lower(), text
+                )
 
     async def _emit_status(self, kind: str, text: str) -> None:
         event = StatusEvent(ts=datetime.now(), kind=kind, text=text)
@@ -337,7 +349,9 @@ def _parse_hint(raw: object) -> HintRow | None:
             return None
     if isinstance(raw, (list, tuple)) and len(raw) >= 5:
         padded = list(raw) + [None] * (8 - len(raw))
-        receiving, finding, location, item, found, entrance, item_flags, status = padded[:8]
+        receiving, finding, location, item, found, entrance, item_flags, status = (
+            padded[:8]
+        )
         try:
             return HintRow(
                 finding_slot=int(finding),

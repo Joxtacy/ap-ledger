@@ -17,18 +17,26 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
         prog="ap-text-client",
         description="Minimal Archipelago text client (items concerning your slot only).",
     )
-    parser.add_argument("server", help="host[:port] or ws://host:port or archipelago://host:port")
+    parser.add_argument(
+        "server", help="host[:port] or ws://host:port or archipelago://host:port"
+    )
     parser.add_argument("slot", help="slot name to connect as")
     parser.add_argument("--password", default=None, help="optional server password")
     parser.add_argument("--team", type=int, default=0, help="team number (default 0)")
-    parser.add_argument("--no-tui", action="store_true", help="plain stdout renderer (pipe-friendly)")
-    parser.add_argument("--cache-dir", type=Path, default=None, help="override DataPackage cache dir")
+    parser.add_argument(
+        "--no-tui", action="store_true", help="plain stdout renderer (pipe-friendly)"
+    )
+    parser.add_argument(
+        "--cache-dir", type=Path, default=None, help="override DataPackage cache dir"
+    )
     parser.add_argument("--log-level", default="WARNING", help="python logging level")
     return parser.parse_args(argv)
 
 
 async def run(args: argparse.Namespace) -> int:
-    logging.basicConfig(level=args.log_level.upper(), format="%(levelname)s %(name)s: %(message)s")
+    logging.basicConfig(
+        level=args.log_level.upper(), format="%(levelname)s %(name)s: %(message)s"
+    )
 
     names = Names(cache_dir=args.cache_dir)
     app_state = AppState()
@@ -71,7 +79,9 @@ async def run(args: argparse.Namespace) -> int:
                 if exc:
                     raise exc
         else:
-            tui = TextClientApp(app_state, names, slot_label=f"{args.slot}", protocol=client)
+            tui = TextClientApp(
+                app_state, names, slot_label=f"{args.slot}", protocol=client
+            )
             await tui.run_async()
     finally:
         for sig in installed_signals:

@@ -5,7 +5,12 @@ def item_ref_from_packet(item: dict | list) -> dict:
     """NetworkItem is sent as either a 4-tuple or object. Normalize to dict."""
     if isinstance(item, list):
         item_id, location_id, player, flags = item
-        return {"item": item_id, "location": location_id, "player": player, "flags": flags}
+        return {
+            "item": item_id,
+            "location": location_id,
+            "player": player,
+            "flags": flags,
+        }
     return item
 
 
@@ -26,4 +31,7 @@ def is_hint_for_me(packet: dict, my_slot: int) -> bool:
 
 def is_self_status(packet: dict, my_slot: int) -> bool:
     """Goal / Release / Collect message referring to me."""
-    return packet.get("type") in ("Goal", "Release", "Collect") and packet.get("slot") == my_slot
+    return (
+        packet.get("type") in ("Goal", "Release", "Collect")
+        and packet.get("slot") == my_slot
+    )
