@@ -10,8 +10,8 @@ from datetime import datetime
 from pathlib import Path
 from urllib.parse import urlparse
 
-import websockets
-from websockets.client import WebSocketClientProtocol
+from websockets.asyncio.client import ClientConnection, connect
+from websockets.exceptions import WebSocketException
 
 from .events import (
     Event,
@@ -88,7 +88,7 @@ class ProtocolClient:
         self.names = names
         self.events = event_queue
         self.status = status_queue
-        self._ws: WebSocketClientProtocol | None = None
+        self._ws: ClientConnection | None = None
         self._stop = asyncio.Event()
 
     def stop(self) -> None:
@@ -119,7 +119,7 @@ class ProtocolClient:
                 ssl_ctx = (
                     ssl.create_default_context() if url.startswith("wss://") else None
                 )
-                async with websockets.connect(
+                async with connect(
                     url,
                     ssl=ssl_ctx,
                     ping_interval=20,
@@ -130,7 +130,7 @@ class ProtocolClient:
                     persist_last_server(self.state.server_address)
                     backoff = 1.0
                     await self._session(ws)
-            except (OSError, websockets.exceptions.WebSocketException) as exc:
+            except (OSError, WebSocketException) as exc:
                 await self._emit_status("disconnected", f"connection lost: {exc}")
             finally:
                 self._ws = None
@@ -145,7 +145,7 @@ class ProtocolClient:
                 pass
             backoff = min(backoff * 2, 30.0)
 
-    async def _session(self, ws: WebSocketClientProtocol) -> None:
+    async def _session(self, ws: ClientConnection) -> None:
         stop_task = asyncio.create_task(self._stop.wait())
         try:
             while not self._stop.is_set():
@@ -163,7 +163,7 @@ class ProtocolClient:
             if not stop_task.done():
                 stop_task.cancel()
 
-    async def _handle(self, packet: dict, ws: WebSocketClientProtocol) -> None:
+    async def _handle(self, packet: dict, ws: ClientConnection) -> None:
         cmd = packet.get("cmd")
         logger.debug("<- %s", cmd)
         if cmd == "RoomInfo":
@@ -189,9 +189,7 @@ class ProtocolClient:
         elif cmd == "SetReply":
             await self._handle_set_reply(packet)
 
-    async def _handle_room_info(
-        self, packet: dict, ws: WebSocketClientProtocol
-    ) -> None:
+    async def _handle_room_info(self, packet: dict, ws: ClientConnection) -> None:
         self.state.seed_name = packet.get("seed_name", "")
         checksums: dict[str, str] = packet.get("datapackage_checksums", {}) or {}
         missing = self.names.missing_games(checksums)
@@ -200,16 +198,14 @@ class ProtocolClient:
         else:
             await self._send_connect(ws)
 
-    async def _handle_data_package(
-        self, packet: dict, ws: WebSocketClientProtocol
-    ) -> None:
+    async def _handle_data_package(self, packet: dict, ws: ClientConnection) -> None:
         games = packet.get("data", {}).get("games", {})
         for game, game_data in games.items():
             self.names.store(game, game_data)
         await self._send_connect(ws)
 
-    async def _send_connect(self, ws: WebSocketClientProtocol) -> None:
-        connect = {
+    async def _send_connect(self, ws: ClientConnection) -> None:
+        connect_packet = {
             "cmd": "Connect",
             "name": self.state.slot_name,
             "game": "",
@@ -220,11 +216,9 @@ class ProtocolClient:
             "items_handling": 0b111,
             "slot_data": False,
         }
-        await self._send(ws, [connect])
+        await self._send(ws, [connect_packet])
 
-    async def _handle_connected(
-        self, packet: dict, ws: WebSocketClientProtocol
-    ) -> None:
+    async def _handle_connected(self, packet: dict, ws: ClientConnection) -> None:
         self.state.team = packet.get("team", 0)
         self.state.my_slot = packet.get("slot", -1)
         self.names.players.my_slot = self.state.my_slot
@@ -322,7 +316,7 @@ class ProtocolClient:
         event = StatusEvent(ts=datetime.now(), kind=kind, text=text)
         await self.status.put(event)
 
-    async def _send(self, ws: WebSocketClientProtocol, msgs: list[dict]) -> None:
+    async def _send(self, ws: ClientConnection, msgs: list[dict]) -> None:
         await ws.send(json.dumps(msgs))
 
 
