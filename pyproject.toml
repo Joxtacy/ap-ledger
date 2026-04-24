@@ -1,0 +1,25 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "ap-text-client"
+version = "0.1.0"
+description = "Minimal Archipelago text client that only surfaces items concerning your slot"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "websockets>=12.0",
+    "textual>=0.80",
+]
+
+[project.scripts]
+ap-text-client = "ap_text_client.__main__:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/ap_text_client"]
+
+[tool.uv]
+dev-dependencies = [
+    "pyinstaller>=6.0",
+]

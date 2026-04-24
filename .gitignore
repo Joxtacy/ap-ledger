@@ -1,0 +1,15 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# uv / venv
+.venv/
+
+# PyInstaller
+build/
+dist/
+*.spec
+
+# macOS
+.DS_Store
