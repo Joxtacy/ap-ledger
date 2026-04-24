@@ -14,6 +14,9 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          - os: ubuntu-latest
+            artifact: ap-text-client-linux
+            binary: ap-text-client
           - os: macos-latest
             artifact: ap-text-client-macos
             binary: ap-text-client
@@ -63,12 +66,14 @@ jobs:
       - name: Package binaries
         run: |
           cd dist
-          chmod +x ap-text-client-macos/ap-text-client
+          chmod +x ap-text-client-linux/ap-text-client ap-text-client-macos/ap-text-client
+          tar -C ap-text-client-linux -czf ap-text-client-linux.tar.gz ap-text-client
           tar -C ap-text-client-macos -czf ap-text-client-macos.tar.gz ap-text-client
           (cd ap-text-client-windows && zip ../ap-text-client-windows.zip ap-text-client.exe)
 
       - uses: softprops/action-gh-release@v2
         with:
           files: |
+            dist/ap-text-client-linux.tar.gz
             dist/ap-text-client-macos.tar.gz
             dist/ap-text-client-windows.zip
