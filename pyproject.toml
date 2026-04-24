@@ -22,4 +22,5 @@ packages = ["src/ap_text_client"]
 [tool.uv]
 dev-dependencies = [
     "pyinstaller>=6.0",
+    "ruff>=0.6",
 ]
