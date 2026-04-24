@@ -14,8 +14,17 @@ import websockets
 from websockets.client import WebSocketClientProtocol
 
 from . import __version__
-from .events import Event, HintEvent, ItemRef, ReceivedEvent, SentEvent, StatusEvent
-from .filters import is_hint_for_me, is_self_status, is_sent_by_me, item_ref_from_packet
+from .events import (
+    Event,
+    HintRow,
+    HintStatus,
+    HintsUpdated,
+    ItemRef,
+    ReceivedEvent,
+    SentEvent,
+    StatusEvent,
+)
+from .filters import is_self_status, is_sent_by_me, item_ref_from_packet
 from .names import Names
 
 logger = logging.getLogger("ap_text_client.protocol")
@@ -152,7 +161,7 @@ class ProtocolClient:
         elif cmd == "DataPackage":
             await self._handle_data_package(packet, ws)
         elif cmd == "Connected":
-            await self._handle_connected(packet)
+            await self._handle_connected(packet, ws)
         elif cmd == "ConnectionRefused":
             errors = ", ".join(packet.get("errors", [])) or "unknown error"
             await self._emit_status("refused", f"connection refused: {errors}")
@@ -165,6 +174,10 @@ class ProtocolClient:
                 self.names.consume_players(packet["players"])
         elif cmd == "PrintJSON":
             await self._handle_print_json(packet)
+        elif cmd == "Retrieved":
+            await self._handle_retrieved(packet)
+        elif cmd == "SetReply":
+            await self._handle_set_reply(packet)
 
     async def _handle_room_info(self, packet: dict, ws: WebSocketClientProtocol) -> None:
         self.state.seed_name = packet.get("seed_name", "")
@@ -195,7 +208,7 @@ class ProtocolClient:
         }
         await self._send(ws, [connect])
 
-    async def _handle_connected(self, packet: dict) -> None:
+    async def _handle_connected(self, packet: dict, ws: WebSocketClientProtocol) -> None:
         self.state.team = packet.get("team", 0)
         self.state.my_slot = packet.get("slot", -1)
         self.names.players.my_slot = self.state.my_slot
@@ -207,6 +220,34 @@ class ProtocolClient:
             f"connected as {alias} (team {self.state.team}, slot {self.state.my_slot}) "
             f"on seed {self.state.seed_name or '?'}",
         )
+        # subscribe to the server-side hints list for this (team, slot)
+        hints_key = self._hints_key()
+        await self._send(ws, [
+            {"cmd": "Get", "keys": [hints_key]},
+            {"cmd": "SetNotify", "keys": [hints_key]},
+        ])
+
+    def _hints_key(self) -> str:
+        return f"_read_hints_{self.state.team}_{self.state.my_slot}"
+
+    async def _handle_retrieved(self, packet: dict) -> None:
+        keys = packet.get("keys") or {}
+        hints_key = self._hints_key()
+        if hints_key in keys:
+            await self._process_hints(keys[hints_key] or [])
+
+    async def _handle_set_reply(self, packet: dict) -> None:
+        if packet.get("key") != self._hints_key():
+            return
+        await self._process_hints(packet.get("value") or [])
+
+    async def _process_hints(self, raw_list: list) -> None:
+        rows: list[HintRow] = []
+        for raw in raw_list:
+            row = _parse_hint(raw)
+            if row is not None:
+                rows.append(row)
+        await self.events.put(HintsUpdated(ts=datetime.now(), hints=tuple(rows)))
 
     async def _handle_received_items(self, packet: dict) -> None:
         start_index = int(packet.get("index", 0))
@@ -244,24 +285,6 @@ class ProtocolClient:
             await self.events.put(SentEvent(ts=datetime.now(), item=ref))
             return
 
-        if is_hint_for_me(packet, my_slot):
-            norm = item_ref_from_packet(packet["item"])
-            ref = ItemRef(
-                item_id=int(norm["item"]),
-                location_id=int(norm["location"]),
-                sender_slot=int(norm["player"]),
-                receiver_slot=int(packet["receiving"]),
-                flags=int(norm.get("flags", 0)),
-            )
-            await self.events.put(
-                HintEvent(
-                    ts=datetime.now(),
-                    item=ref,
-                    found=bool(packet.get("found", False)),
-                )
-            )
-            return
-
         if is_self_status(packet, my_slot):
             kind = packet.get("type", "").lower()
             text = _flatten_data(packet.get("data", []))
@@ -277,3 +300,39 @@ class ProtocolClient:
 
 def _flatten_data(parts: list[dict]) -> str:
     return "".join(part.get("text", "") for part in parts if isinstance(part, dict))
+
+
+def _parse_hint(raw: object) -> HintRow | None:
+    """Accept either the dict serialization Archipelago uses for NamedTuples
+    (with a ``class`` marker) or a plain 8-element tuple fallback."""
+    if isinstance(raw, dict):
+        try:
+            return HintRow(
+                finding_slot=int(raw["finding_player"]),
+                receiving_slot=int(raw["receiving_player"]),
+                item_id=int(raw["item"]),
+                location_id=int(raw["location"]),
+                found=bool(raw.get("found", False)),
+                entrance=str(raw.get("entrance", "")),
+                item_flags=int(raw.get("item_flags", 0)),
+                status=HintStatus.coerce(raw.get("status", 0)),
+            )
+        except (KeyError, ValueError, TypeError):
+            return None
+    if isinstance(raw, (list, tuple)) and len(raw) >= 5:
+        padded = list(raw) + [None] * (8 - len(raw))
+        receiving, finding, location, item, found, entrance, item_flags, status = padded[:8]
+        try:
+            return HintRow(
+                finding_slot=int(finding),
+                receiving_slot=int(receiving),
+                item_id=int(item),
+                location_id=int(location),
+                found=bool(found),
+                entrance=str(entrance or ""),
+                item_flags=int(item_flags or 0),
+                status=HintStatus.coerce(status or 0),
+            )
+        except (ValueError, TypeError):
+            return None
+    return None

@@ -137,3 +137,32 @@ def flag_prefix(flags: int) -> str:
     if flags & 0b010:
         return "+"  # useful
     return " "
+
+
+from .events import HintStatus  # noqa: E402  (late import to avoid cycle w/ dataclasses)
+
+
+HINT_STATUS_LABELS: dict[HintStatus, str] = {
+    HintStatus.UNSPECIFIED: "-",
+    HintStatus.NO_PRIORITY: "no priority",
+    HintStatus.AVOID: "avoid",
+    HintStatus.PRIORITY: "priority",
+    HintStatus.FOUND: "found",
+}
+
+
+HINT_STATUS_COLORS: dict[HintStatus, str] = {
+    HintStatus.UNSPECIFIED: "white",
+    HintStatus.NO_PRIORITY: "slate_blue1",
+    HintStatus.AVOID: "salmon1",
+    HintStatus.PRIORITY: "plum2",
+    HintStatus.FOUND: "green",
+}
+
+
+def hint_status_label(status: HintStatus) -> str:
+    return HINT_STATUS_LABELS.get(status, "-")
+
+
+def hint_status_color(status: HintStatus) -> str:
+    return HINT_STATUS_COLORS.get(status, "white")
