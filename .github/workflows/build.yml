@@ -77,3 +77,14 @@ jobs:
             dist/ap-text-client-linux.tar.gz
             dist/ap-text-client-macos.tar.gz
             dist/ap-text-client-windows.zip
+          generate_release_notes: true
+          body: |
+            ## Downloads
+
+            | Platform | File | Requirement |
+            |---|---|---|
+            | Linux x86_64 | `ap-text-client-linux.tar.gz` | glibc ≥ 2.39 (Ubuntu 24.04+, Debian 13+, Fedora 40+) |
+            | macOS arm64 | `ap-text-client-macos.tar.gz` | macOS 14 Sonoma or newer, Apple Silicon |
+            | Windows x86_64 | `ap-text-client-windows.zip` | Windows 10 or newer |
+
+            Older systems: build from source — see the [README](../../blob/main/README.md#install-from-source).
