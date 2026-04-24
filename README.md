@@ -16,11 +16,11 @@ location names autocomplete inline.
 
 Pre-built binaries for each tagged release are attached to the GitHub Release:
 
-| Platform | File | Requirement |
-|---|---|---|
-| Linux x86_64 | `ap-text-client-linux.tar.gz` | glibc ≥ 2.39 (Ubuntu 24.04+, Debian 13+, Fedora 40+) |
-| macOS arm64 | `ap-text-client-macos.tar.gz` | macOS 14 Sonoma or newer, Apple Silicon |
-| Windows x86_64 | `ap-text-client-windows.zip` | Windows 10 or newer |
+| Platform       | File                          | Requirement                                          |
+| -------------- | ----------------------------- | ---------------------------------------------------- |
+| Linux x86_64   | `ap-text-client-linux.tar.gz` | glibc ≥ 2.39 (Ubuntu 24.04+, Debian 13+, Fedora 40+) |
+| macOS arm64    | `ap-text-client-macos.tar.gz` | macOS 14 Sonoma or newer, Apple Silicon              |
+| Windows x86_64 | `ap-text-client-windows.zip`  | Windows 10 or newer                                  |
 
 Older distros or Intel Macs: build from source (below). Static binaries aren't
 a goal here; the release builds come straight off GitHub Actions `*-latest` runners.
@@ -52,20 +52,20 @@ Default port is `38281`. `archipelago://host:port` and bare `host:port` are acce
 
 ## Key bindings (TUI)
 
-| Key | Action |
-|---|---|
-| `/` | Focus the command input |
-| `Esc` | Leave the command input |
-| `Enter` | Submit the command / chat line |
-| `→` / `End` | Accept the inline autocomplete suggestion |
-| `F1` | Switch to the Hints tab |
-| `F2` | Switch to the Status tab |
-| `h` `j` `k` `l` | Pan the focused pane (or move the DataTable cursor) |
-| `g` / `G` | Jump to top / bottom of the focused pane |
-| `Ctrl+D` / `Ctrl+U` | Half-page down / up |
-| `Ctrl+L` | Clear the focused pane |
-| `Ctrl+P` | Pause / resume auto-scroll on the focused pane |
-| `Ctrl+Q` | Quit |
+| Key                 | Action                                              |
+| ------------------- | --------------------------------------------------- |
+| `/`                 | Focus the command input                             |
+| `Esc`               | Leave the command input                             |
+| `Enter`             | Submit the command / chat line                      |
+| `→` / `End`         | Accept the inline autocomplete suggestion           |
+| `F1`                | Switch to the Hints tab                             |
+| `F2`                | Switch to the Status tab                            |
+| `h` `j` `k` `l`     | Pan the focused pane (or move the DataTable cursor) |
+| `g` / `G`           | Jump to top / bottom of the focused pane            |
+| `Ctrl+D` / `Ctrl+U` | Half-page down / up                                 |
+| `Ctrl+L`            | Clear the focused pane                              |
+| `Ctrl+P`            | Pause / resume auto-scroll on the focused pane      |
+| `Ctrl+Q`            | Quit                                                |
 
 Hjkl only fires when a pane has focus; while the command input is focused the
 keys just type into it. Press `Esc` to leave the input first.
@@ -75,12 +75,12 @@ keys just type into it. Press `Esc` to leave the input first.
 Inline grey suggestions appear while typing the following commands. Accept with
 `→` or `End`:
 
-| Command | Completes |
-|---|---|
-| `!hint <item>` | items in your game |
-| `!hint_location <location>` | locations in your game |
-| `!getitem <item>` | items in your game |
-| `!send <player> <item>` | player aliases, then that player's items |
+| Command                     | Completes                                |
+| --------------------------- | ---------------------------------------- |
+| `!hint <item>`              | items in your game                       |
+| `!hint_location <location>` | locations in your game                   |
+| `!getitem <item>`           | items in your game                       |
+| `!send <player> <item>`     | player aliases, then that player's items |
 
 ## Cache
 
