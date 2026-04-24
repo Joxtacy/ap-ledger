@@ -9,8 +9,8 @@ description = "Minimal Archipelago text client that only surfaces items concerni
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
-    "websockets>=12.0",
-    "textual>=0.80",
+    "websockets>=15.0",
+    "textual>=8.0",
 ]
 
 [project.scripts]
