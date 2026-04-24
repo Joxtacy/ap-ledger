@@ -83,10 +83,18 @@ class TextClientApp(App):
         Binding("ctrl+q", "quit", "Quit", priority=True),
         Binding("ctrl+l", "clear_focus", "Clear pane"),
         Binding("ctrl+p", "toggle_scroll", "Pause scroll"),
-        Binding("ctrl+h", "show_tab('hints-tab')", "Hints"),
-        Binding("ctrl+s", "show_tab('status-tab')", "Status"),
+        Binding("f1", "show_tab('hints-tab')", "Hints"),
+        Binding("f2", "show_tab('status-tab')", "Status"),
         Binding("slash", "focus_input", "Command"),
         Binding("escape", "blur_input", "Leave input"),
+        Binding("h", "scroll('left')", "", show=False),
+        Binding("j", "scroll('down')", "", show=False),
+        Binding("k", "scroll('up')", "", show=False),
+        Binding("l", "scroll('right')", "", show=False),
+        Binding("g", "scroll('home')", "", show=False),
+        Binding("G", "scroll('end')", "", show=False),
+        Binding("ctrl+d", "scroll('half_down')", "", show=False),
+        Binding("ctrl+u", "scroll('half_up')", "", show=False),
     ]
 
     def __init__(
@@ -142,6 +150,11 @@ class TextClientApp(App):
 
     def action_show_tab(self, tab_id: str) -> None:
         self.query_one("#bottom", TabbedContent).active = tab_id
+        # Focus the content so hjkl / cursor keys act on it immediately
+        if tab_id == "hints-tab":
+            self.query_one("#hints", DataTable).focus()
+        elif tab_id == "status-tab":
+            self.query_one("#status", RichLog).focus()
 
     def action_focus_input(self) -> None:
         if not isinstance(self.focused, Input):
@@ -150,6 +163,42 @@ class TextClientApp(App):
     def action_blur_input(self) -> None:
         if isinstance(self.focused, Input):
             self.query_one("#sent", RichLog).focus()
+
+    def action_scroll(self, direction: str) -> None:
+        widget = self.focused
+        if widget is None or isinstance(widget, Input):
+            return
+        if isinstance(widget, DataTable):
+            # DataTable: move the row/column cursor instead of panning the view
+            mapping = {
+                "up": widget.action_cursor_up,
+                "down": widget.action_cursor_down,
+                "left": widget.action_cursor_left,
+                "right": widget.action_cursor_right,
+                "home": widget.action_scroll_home,
+                "end": widget.action_scroll_end,
+                "half_up": widget.action_page_up,
+                "half_down": widget.action_page_down,
+            }
+            handler = mapping.get(direction)
+            if handler:
+                handler()
+            return
+        # RichLog: scroll the view
+        half = max(1, widget.size.height // 2)
+        handlers = {
+            "up": lambda: widget.scroll_up(animate=False),
+            "down": lambda: widget.scroll_down(animate=False),
+            "left": lambda: widget.scroll_left(animate=False),
+            "right": lambda: widget.scroll_right(animate=False),
+            "home": lambda: widget.scroll_home(animate=False),
+            "end": lambda: widget.scroll_end(animate=False),
+            "half_up": lambda: widget.scroll_relative(y=-half, animate=False),
+            "half_down": lambda: widget.scroll_relative(y=half, animate=False),
+        }
+        handler = handlers.get(direction)
+        if handler:
+            handler()
 
     def on_input_submitted(self, event: Input.Submitted) -> None:
         if event.input.id != "cmd":
