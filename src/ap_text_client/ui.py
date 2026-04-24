@@ -6,7 +6,6 @@ from typing import TYPE_CHECKING
 
 from rich.markup import escape as rich_escape
 from rich.text import Text
-
 from textual.app import App, ComposeResult
 from textual.binding import Binding
 from textual.containers import Horizontal
@@ -110,7 +109,7 @@ class TextClientApp(App):
         state: AppState,
         names: Names,
         slot_label: str,
-        protocol: "ProtocolClient | None" = None,
+        protocol: ProtocolClient | None = None,
     ) -> None:
         super().__init__()
         self.state = state

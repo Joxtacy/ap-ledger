@@ -13,7 +13,7 @@ class HintStatus(IntEnum):
     FOUND = 40
 
     @classmethod
-    def coerce(cls, value: object) -> "HintStatus":
+    def coerce(cls, value: object) -> HintStatus:
         if isinstance(value, cls):
             return value
         try:

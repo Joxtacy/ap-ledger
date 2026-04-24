@@ -141,7 +141,7 @@ class ProtocolClient:
             try:
                 await asyncio.wait_for(self._stop.wait(), timeout=backoff)
                 return
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 pass
             backoff = min(backoff * 2, 30.0)
 

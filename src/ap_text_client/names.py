@@ -5,6 +5,7 @@ import os
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from .events import HintStatus
 
 ARCHIPELAGO_GAME = "Archipelago"
 
@@ -21,7 +22,7 @@ class GameNames:
     checksum: str = ""
 
     @classmethod
-    def from_game_data(cls, game_data: dict) -> "GameNames":
+    def from_game_data(cls, game_data: dict) -> GameNames:
         return cls(
             item_id_to_name={
                 v: k for k, v in game_data.get("item_name_to_id", {}).items()
@@ -144,9 +145,6 @@ def flag_prefix(flags: int) -> str:
     if flags & 0b010:
         return "+"  # useful
     return " "
-
-
-from .events import HintStatus  # noqa: E402  (late import to avoid cycle w/ dataclasses)
 
 
 HINT_STATUS_LABELS: dict[HintStatus, str] = {

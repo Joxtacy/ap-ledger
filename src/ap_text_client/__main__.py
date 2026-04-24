@@ -93,7 +93,7 @@ async def run(args: argparse.Namespace) -> int:
             client.stop()
             try:
                 await asyncio.wait_for(protocol_task, timeout=2.0)
-            except (asyncio.TimeoutError, asyncio.CancelledError):
+            except (TimeoutError, asyncio.CancelledError):
                 protocol_task.cancel()
                 try:
                     await protocol_task
