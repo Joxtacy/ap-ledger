@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import asyncio
+from datetime import datetime
+from typing import TYPE_CHECKING
 
 from rich.markup import escape as rich_escape
 from rich.text import Text
@@ -8,7 +10,7 @@ from rich.text import Text
 from textual.app import App, ComposeResult
 from textual.binding import Binding
 from textual.containers import Horizontal
-from textual.widgets import DataTable, Footer, Header, RichLog, TabbedContent, TabPane
+from textual.widgets import DataTable, Footer, Header, Input, RichLog, TabbedContent, TabPane
 
 from .events import (
     Event,
@@ -21,6 +23,10 @@ from .events import (
     StatusEvent,
 )
 from .names import Names, flag_prefix, hint_status_color, hint_status_label
+from .suggester import CommandSuggester
+
+if TYPE_CHECKING:
+    from .protocol import ProtocolClient
 
 
 def _fmt_ts(ts) -> str:
@@ -69,21 +75,32 @@ class TextClientApp(App):
     #bottom { height: 16; }
     #hints { height: 1fr; }
     #status { height: 1fr; border: solid $primary; }
+    #cmd { height: 3; border: tall $accent; }
+    #cmd:focus-within { border: tall $success; }
     """
 
     BINDINGS = [
-        Binding("q", "quit", "Quit"),
-        Binding("c", "clear_focus", "Clear pane"),
-        Binding("p", "toggle_scroll", "Pause scroll"),
-        Binding("h", "show_tab('hints-tab')", "Hints"),
-        Binding("s", "show_tab('status-tab')", "Status"),
+        Binding("ctrl+q", "quit", "Quit", priority=True),
+        Binding("ctrl+l", "clear_focus", "Clear pane"),
+        Binding("ctrl+p", "toggle_scroll", "Pause scroll"),
+        Binding("ctrl+h", "show_tab('hints-tab')", "Hints"),
+        Binding("ctrl+s", "show_tab('status-tab')", "Status"),
+        Binding("slash", "focus_input", "Command"),
+        Binding("escape", "blur_input", "Leave input"),
     ]
 
-    def __init__(self, state: AppState, names: Names, slot_label: str) -> None:
+    def __init__(
+        self,
+        state: AppState,
+        names: Names,
+        slot_label: str,
+        protocol: "ProtocolClient | None" = None,
+    ) -> None:
         super().__init__()
         self.state = state
         self.names = names
         self.slot_label = slot_label
+        self.protocol = protocol
         self._paused: dict[str, bool] = {"sent": False, "received": False, "status": False}
         self._latest_hints: tuple[HintRow, ...] = ()
 
@@ -97,6 +114,11 @@ class TextClientApp(App):
                 yield DataTable(id="hints", zebra_stripes=True, cursor_type="row")
             with TabPane("Status", id="status-tab"):
                 yield RichLog(id="status", highlight=False, markup=True, wrap=True)
+        yield Input(
+            placeholder="/ to focus  —  !hint <item>, !send <player> <item>, chat…",
+            suggester=CommandSuggester(self.names),
+            id="cmd",
+        )
         yield Footer()
 
     def on_mount(self) -> None:
@@ -120,6 +142,36 @@ class TextClientApp(App):
 
     def action_show_tab(self, tab_id: str) -> None:
         self.query_one("#bottom", TabbedContent).active = tab_id
+
+    def action_focus_input(self) -> None:
+        if not isinstance(self.focused, Input):
+            self.query_one("#cmd", Input).focus()
+
+    def action_blur_input(self) -> None:
+        if isinstance(self.focused, Input):
+            self.query_one("#sent", RichLog).focus()
+
+    def on_input_submitted(self, event: Input.Submitted) -> None:
+        if event.input.id != "cmd":
+            return
+        text = event.value.strip()
+        event.input.value = ""
+        if not text:
+            return
+        if self.protocol is None:
+            self._emit_local_status("error", "no protocol client attached")
+            return
+        self.run_worker(self._send_command(text), name="send", exclusive=False)
+
+    async def _send_command(self, text: str) -> None:
+        assert self.protocol is not None
+        self._emit_local_status("sent", f"> {text}")
+        ok = await self.protocol.send_say(text)
+        if not ok:
+            self._emit_local_status("error", "not connected; command dropped")
+
+    def _emit_local_status(self, kind: str, text: str) -> None:
+        self.state.status.put_nowait(StatusEvent(ts=datetime.now(), kind=kind, text=text))
 
     async def _pump_events(self) -> None:
         while True:
@@ -208,6 +260,10 @@ class TextClientApp(App):
             "refused": "bold red",
             "retrying": "yellow",
             "connecting": "dim",
+            "cmd": "cyan",
+            "admincmd": "cyan",
+            "sent": "bold blue",
+            "error": "bold red",
         }.get(event.kind, "white")
         log.write(f"[dim]{_fmt_ts(event.ts)}[/] [{color}]{event.kind}[/] {event.text}")
 

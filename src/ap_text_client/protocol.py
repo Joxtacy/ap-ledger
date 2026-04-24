@@ -102,6 +102,15 @@ class ProtocolClient:
                 return
             loop.create_task(ws.close())
 
+    async def send_say(self, text: str) -> bool:
+        """Send a Say packet (chat line or ``!command``). Returns False if the
+        socket isn't currently open — the caller can surface that to the user."""
+        ws = self._ws
+        if ws is None or self.state.my_slot < 0:
+            return False
+        await self._send(ws, [{"cmd": "Say", "text": text}])
+        return True
+
     async def run(self) -> None:
         url = normalize_url(self.state.server_address)
         backoff = 1.0
@@ -289,6 +298,13 @@ class ProtocolClient:
             kind = packet.get("type", "").lower()
             text = _flatten_data(packet.get("data", []))
             await self._emit_status(kind, text)
+            return
+
+        ptype = packet.get("type", "")
+        if ptype in ("CommandResult", "AdminCommandResult"):
+            text = _flatten_data(packet.get("data", []))
+            if text:
+                await self._emit_status(ptype.replace("CommandResult", "cmd").lower(), text)
 
     async def _emit_status(self, kind: str, text: str) -> None:
         event = StatusEvent(ts=datetime.now(), kind=kind, text=text)

@@ -71,7 +71,7 @@ async def run(args: argparse.Namespace) -> int:
                 if exc:
                     raise exc
         else:
-            tui = TextClientApp(app_state, names, slot_label=f"{args.slot}")
+            tui = TextClientApp(app_state, names, slot_label=f"{args.slot}", protocol=client)
             await tui.run_async()
     finally:
         for sig in installed_signals:
