@@ -64,6 +64,7 @@ PyInstaller freezes `entry.py`, not `src/ap_text_client/__main__.py`. Running `_
 
 - `~/.config/ap-text-client/uuid` — stable client UUID, generated once on first connect (the server uses it for reconnection identity).
 - `~/.config/ap-text-client/last_server` — last successful server address, written on every successful websocket open.
+- `~/.local/state/ap-text-client/events.log` — append-only log of `Sent`/`Received`/`Hints`/`Status` events, written by `event_log.EventLogger` (a non-propagating stdlib logger with a `FileHandler`). `ProtocolClient` accepts an optional `event_log` and calls it next to each `events.put` / `status.put`. Disable with `--no-event-log`; relocate with `--log-file PATH`.
 
 ## Version control
 

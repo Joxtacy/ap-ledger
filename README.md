@@ -87,3 +87,17 @@ Inline grey suggestions appear while typing the following commands. Accept with
 DataPackage responses are cached in `~/.cache/ap-text-client/datapackage/` by
 checksum so reconnects are cheap. The last server address is saved in
 `~/.config/ap-text-client/last_server`.
+
+## Event log
+
+Items you send and receive (plus hint updates and status transitions) are
+appended to `~/.local/state/ap-text-client/events.log` so you can scroll back
+through a session after the TUI has exited. One line per event:
+
+```
+2026-04-25 14:02:11 SENT     Sword of Truth -> Alice (slot 3) @ Cave System
+2026-04-25 14:02:13 RECEIVED Map <- Bob (slot 2) @ Forest Maze
+```
+
+Override the path with `--log-file PATH`, or disable entirely with
+`--no-event-log`.
