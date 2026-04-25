@@ -13,6 +13,7 @@ from urllib.parse import urlparse
 from websockets.asyncio.client import ClientConnection, connect
 from websockets.exceptions import WebSocketException
 
+from .event_log import EventLogger
 from .events import (
     Event,
     HintRow,
@@ -83,11 +84,13 @@ class ProtocolClient:
         names: Names,
         event_queue: asyncio.Queue[Event],
         status_queue: asyncio.Queue[StatusEvent],
+        event_log: EventLogger | None = None,
     ) -> None:
         self.state = state
         self.names = names
         self.events = event_queue
         self.status = status_queue
+        self._event_log = event_log
         self._ws: ClientConnection | None = None
         self._stop = asyncio.Event()
 
@@ -260,7 +263,10 @@ class ProtocolClient:
             row = _parse_hint(raw)
             if row is not None:
                 rows.append(row)
-        await self.events.put(HintsUpdated(ts=datetime.now(), hints=tuple(rows)))
+        event = HintsUpdated(ts=datetime.now(), hints=tuple(rows))
+        await self.events.put(event)
+        if self._event_log is not None:
+            self._event_log.hints(event)
 
     async def _handle_received_items(self, packet: dict) -> None:
         start_index = int(packet.get("index", 0))
@@ -278,7 +284,10 @@ class ProtocolClient:
                 receiver_slot=self.state.my_slot,
                 flags=int(norm.get("flags", 0)),
             )
-            await self.events.put(ReceivedEvent(ts=datetime.now(), item=ref))
+            event = ReceivedEvent(ts=datetime.now(), item=ref)
+            await self.events.put(event)
+            if self._event_log is not None:
+                self._event_log.received(event)
             self.state.received_count = server_pos + 1
 
     async def _handle_print_json(self, packet: dict) -> None:
@@ -295,7 +304,10 @@ class ProtocolClient:
                 receiver_slot=int(packet["receiving"]),
                 flags=int(norm.get("flags", 0)),
             )
-            await self.events.put(SentEvent(ts=datetime.now(), item=ref))
+            event = SentEvent(ts=datetime.now(), item=ref)
+            await self.events.put(event)
+            if self._event_log is not None:
+                self._event_log.sent(event)
             return
 
         if is_self_status(packet, my_slot):
@@ -315,6 +327,8 @@ class ProtocolClient:
     async def _emit_status(self, kind: str, text: str) -> None:
         event = StatusEvent(ts=datetime.now(), kind=kind, text=text)
         await self.status.put(event)
+        if self._event_log is not None:
+            self._event_log.status(event)
 
     async def _send(self, ws: ClientConnection, msgs: list[dict]) -> None:
         await ws.send(json.dumps(msgs))

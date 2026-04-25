@@ -7,6 +7,7 @@ import signal
 import sys
 from pathlib import Path
 
+from . import event_log
 from .names import Names
 from .protocol import ConnectionState, ProtocolClient
 from .ui import AppState, StdoutRenderer, TextClientApp
@@ -30,6 +31,17 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
         "--cache-dir", type=Path, default=None, help="override DataPackage cache dir"
     )
     parser.add_argument("--log-level", default="WARNING", help="python logging level")
+    parser.add_argument(
+        "--log-file",
+        type=Path,
+        default=None,
+        help=f"event log file (default: {event_log.default_log_file()})",
+    )
+    parser.add_argument(
+        "--no-event-log",
+        action="store_true",
+        help="disable the persistent event log",
+    )
     return parser.parse_args(argv)
 
 
@@ -39,6 +51,11 @@ async def run(args: argparse.Namespace) -> int:
     )
 
     names = Names(cache_dir=args.cache_dir)
+    elog: event_log.EventLogger | None = None
+    if not args.no_event_log:
+        log_path = args.log_file or event_log.default_log_file()
+        event_log.setup_event_logger(log_path)
+        elog = event_log.EventLogger(names)
     app_state = AppState()
     conn_state = ConnectionState(
         server_address=args.server,
@@ -51,6 +68,7 @@ async def run(args: argparse.Namespace) -> int:
         names=names,
         event_queue=app_state.events,
         status_queue=app_state.status,
+        event_log=elog,
     )
 
     loop = asyncio.get_running_loop()
