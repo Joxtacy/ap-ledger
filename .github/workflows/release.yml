@@ -50,6 +50,8 @@ jobs:
         with:
           tool: git-cliff
 
+      - uses: astral-sh/setup-uv@v8.1.0
+
       - name: Render CHANGELOG.md
         run: git-cliff --config cliff.toml --tag "v${{ inputs.version }}" -o CHANGELOG.md
 
@@ -79,8 +81,13 @@ jobs:
           PY
           grep '^version' pyproject.toml
 
+      - name: Refresh uv.lock
+        # Re-resolve only what the pyproject.toml version bump touches; do not
+        # upgrade other deps as a side effect of cutting a release.
+        run: uv lock --no-upgrade
+
       - name: Show diff
-        run: git --no-pager diff -- CHANGELOG.md pyproject.toml
+        run: git --no-pager diff -- CHANGELOG.md pyproject.toml uv.lock
 
       - name: Stop here if dry_run
         if: ${{ inputs.dry_run }}
@@ -97,7 +104,7 @@ jobs:
       - name: Commit, tag, and push
         if: ${{ !inputs.dry_run }}
         run: |
-          git add CHANGELOG.md pyproject.toml
+          git add CHANGELOG.md pyproject.toml uv.lock
           git commit -m "chore(release): v${{ inputs.version }}"
           git tag -a "v${{ inputs.version }}" -m "Release v${{ inputs.version }}"
           git push origin HEAD:${{ github.ref_name }}

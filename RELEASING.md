@@ -7,8 +7,9 @@ Releases are cut from the GitHub Actions UI. The flow:
    to see the proposed `CHANGELOG.md` and `pyproject.toml` diff without
    committing or pushing.
 3. The workflow regenerates `CHANGELOG.md` from `cliff.toml`, bumps
-   `pyproject.toml`, commits as `github-actions[bot]`, tags `vX.Y.Z`, pushes,
-   then dispatches `build.yml` against the new tag.
+   `pyproject.toml`, refreshes `uv.lock` via `uv lock --no-upgrade`, commits
+   as `github-actions[bot]`, tags `vX.Y.Z`, pushes, then dispatches `build.yml`
+   against the new tag.
 4. `build.yml` builds Linux/macOS/Windows binaries, packages them, and
    publishes a GitHub Release with the per-version changelog section + a
    downloads table as the body.
