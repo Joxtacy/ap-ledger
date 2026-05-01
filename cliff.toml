@@ -1,0 +1,83 @@
+# git-cliff configuration -- https://git-cliff.org/docs/configuration
+#
+# Generates CHANGELOG.md (Keep a Changelog format) from conventional-commit
+# history. Used by .github/workflows/release.yml to produce per-version
+# changelog entries on release, and by build.yml to extract the current
+# version's section into the GitHub Release body.
+
+[changelog]
+header = """
+# Changelog
+
+All notable changes to this project will be documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+"""
+body = """
+
+{% if version -%}
+## [{{ version | trim_start_matches(pat="v") }}] - {{ timestamp | date(format="%Y-%m-%d") }}
+{% else -%}
+## [Unreleased]
+{% endif -%}
+{% for group, commits in commits | group_by(attribute="group") %}
+### {{ group | upper_first }}
+
+{% for commit in commits -%}
+- {{ commit.message | split(pat="\n") | first | upper_first | trim }}{% if commit.breaking %} **(breaking)**{% endif %}
+{% endfor %}
+{% endfor %}
+"""
+footer = """
+{% for release in releases -%}
+    {% if release.version -%}
+        {% if release.previous.version -%}
+            [{{ release.version | trim_start_matches(pat="v") }}]: \
+                https://github.com/Joxtacy/ap-ledger/compare/{{ release.previous.version }}..{{ release.version }}
+        {% else -%}
+            [{{ release.version | trim_start_matches(pat="v") }}]: \
+                https://github.com/Joxtacy/ap-ledger/releases/tag/{{ release.version }}
+        {% endif -%}
+    {% else -%}
+        [unreleased]: https://github.com/Joxtacy/ap-ledger/compare/\
+            {% if releases | length > 0 -%}\
+                {% set last = releases | first -%}\
+                {{ last.version }}..HEAD\
+            {% else -%}\
+                HEAD\
+            {% endif -%}
+    {% endif -%}
+{% endfor %}
+"""
+trim = true
+
+[git]
+conventional_commits = true
+filter_unconventional = false
+split_commits = false
+protect_breaking_commits = true
+filter_commits = true
+tag_pattern = "v[0-9]*"
+sort_commits = "newest"
+
+# Map conventional-commit types to Keep a Changelog sections.
+# `skip = true` removes the commit from the changelog entirely.
+commit_parsers = [
+    { message = "^chore\\(release\\)", skip = true },
+    { message = "^chore\\(deps\\)", group = "Dependencies" },
+    { message = "^feat", group = "Added" },
+    { message = "^fix", group = "Fixed" },
+    { message = "^perf", group = "Changed" },
+    { message = "^refactor", group = "Changed" },
+    { message = "^docs", group = "Documentation" },
+    { message = "^revert", group = "Reverted" },
+    { message = "^style", skip = true },
+    { message = "^test", skip = true },
+    { message = "^ci", skip = true },
+    { message = "^chore", skip = true },
+    { body = ".*security", group = "Security" },
+    # Catch-all for non-conventional commits.
+    { message = ".*", group = "Other" },
+]

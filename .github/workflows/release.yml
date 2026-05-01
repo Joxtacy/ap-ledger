@@ -1,0 +1,111 @@
+name: release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to release (e.g. 0.2.0). No leading 'v'."
+        required: true
+        type: string
+      dry_run:
+        description: "Render the changelog and bump pyproject.toml, but do not commit, tag, or push."
+        required: false
+        type: boolean
+        default: false
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: cut release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Validate version input
+        run: |
+          if [[ ! "${{ inputs.version }}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::version must match X.Y.Z (got '${{ inputs.version }}')"
+            exit 1
+          fi
+
+      - name: Refuse if tag already exists
+        run: |
+          if git rev-parse --verify "refs/tags/v${{ inputs.version }}" >/dev/null 2>&1; then
+            echo "::error::tag v${{ inputs.version }} already exists"
+            exit 1
+          fi
+
+      - name: Install git-cliff
+        uses: orhun/git-cliff-action@v4
+        with:
+          config: cliff.toml
+          args: --tag v${{ inputs.version }} -o CHANGELOG.md
+
+      - name: Verify the new section has entries
+        run: |
+          section=$(git-cliff --tag "v${{ inputs.version }}" --current --strip header)
+          # release must contain at least one bullet ("- ..."); otherwise everything
+          # since the last tag was filtered out by cliff.toml and there's nothing
+          # user-facing to release.
+          if ! printf '%s\n' "$section" | grep -qE '^- '; then
+            echo "::error::no changelog entries for v${{ inputs.version }} -- nothing to release"
+            exit 1
+          fi
+          echo "$section"
+
+      - name: Bump pyproject.toml version
+        run: |
+          python - <<'PY'
+          import re, pathlib, sys
+          version = "${{ inputs.version }}"
+          path = pathlib.Path("pyproject.toml")
+          text = path.read_text()
+          new, n = re.subn(r'^version\s*=\s*"[^"]*"', f'version = "{version}"', text, count=1, flags=re.M)
+          if n != 1:
+              sys.exit(f"failed to bump version in pyproject.toml (matched {n} lines)")
+          path.write_text(new)
+          PY
+          grep '^version' pyproject.toml
+
+      - name: Show diff
+        run: git --no-pager diff -- CHANGELOG.md pyproject.toml
+
+      - name: Stop here if dry_run
+        if: ${{ inputs.dry_run }}
+        run: |
+          echo "::notice::dry_run=true -- not committing, tagging, or pushing"
+          exit 0
+
+      - name: Configure git author
+        if: ${{ !inputs.dry_run }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Commit, tag, and push
+        if: ${{ !inputs.dry_run }}
+        run: |
+          git add CHANGELOG.md pyproject.toml
+          git commit -m "chore(release): v${{ inputs.version }}"
+          git tag -a "v${{ inputs.version }}" -m "Release v${{ inputs.version }}"
+          git push origin HEAD:${{ github.ref_name }}
+          git push origin "v${{ inputs.version }}"
+
+      # Pushes authenticated with the default GITHUB_TOKEN do not trigger
+      # downstream workflows, so build.yml will not fire on the tag push above.
+      # We dispatch it explicitly against the new tag ref; build.yml's release
+      # job sees github.ref = refs/tags/vX.Y.Z and its `if:` condition matches.
+      - name: Dispatch build.yml against the new tag
+        if: ${{ !inputs.dry_run }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh workflow run build.yml --ref "v${{ inputs.version }}"
