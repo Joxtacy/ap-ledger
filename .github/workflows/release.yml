@@ -45,14 +45,16 @@ jobs:
           fi
 
       - name: Install git-cliff
-        uses: orhun/git-cliff-action@v4
+        uses: taiki-e/install-action@v2
         with:
-          config: cliff.toml
-          args: --tag v${{ inputs.version }} -o CHANGELOG.md
+          tool: git-cliff
+
+      - name: Render CHANGELOG.md
+        run: git-cliff --config cliff.toml --tag "v${{ inputs.version }}" -o CHANGELOG.md
 
       - name: Verify the new section has entries
         run: |
-          section=$(git-cliff --tag "v${{ inputs.version }}" --current --strip header)
+          section=$(git-cliff --config cliff.toml --tag "v${{ inputs.version }}" --current --strip header)
           # release must contain at least one bullet ("- ..."); otherwise everything
           # since the last tag was filtered out by cliff.toml and there's nothing
           # user-facing to release.
