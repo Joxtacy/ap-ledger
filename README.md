@@ -44,11 +44,14 @@ Examples:
 
 ```sh
 uv run ap-text-client archipelago.gg:38281 JoxSlot
-uv run ap-text-client localhost:38281 JoxSlot --password secret
-uv run ap-text-client localhost:38281 JoxSlot --no-tui   # plain stdout, pipe-friendly
+uv run ap-text-client ws://localhost:38281 JoxSlot --password secret
+uv run ap-text-client ws://localhost:38281 JoxSlot --no-tui   # plain stdout, pipe-friendly
 ```
 
-Default port is `38281`. `archipelago://host:port` and bare `host:port` are accepted.
+Default port is `38281`. `ws://`, `wss://`, `archipelago://`, and bare `host:port`
+are all accepted; bare and `archipelago://` default to `wss://` (public
+Archipelago hosts terminate TLS). For a plain-WebSocket server (typically a
+local self-hosted one) prefix the address with `ws://` explicitly.
 
 ## Key bindings (TUI)
 

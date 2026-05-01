@@ -19,7 +19,9 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
         description="Minimal Archipelago text client (items concerning your slot only).",
     )
     parser.add_argument(
-        "server", help="host[:port] or ws://host:port or archipelago://host:port"
+        "server",
+        help="host[:port], ws://host:port, wss://host:port, or archipelago://host:port "
+        "(bare and archipelago:// default to wss; use ws:// for plain WebSocket)",
     )
     parser.add_argument("slot", help="slot name to connect as")
     parser.add_argument("--password", default=None, help="optional server password")

@@ -46,10 +46,13 @@ class ConnectionState:
 
 
 def normalize_url(address: str) -> str:
+    # Default to wss:// when the user hasn't committed to a transport.
+    # Public Archipelago hosts (archipelago.gg) terminate TLS; for plain ws
+    # the caller must say so explicitly with a `ws://` prefix.
     if address.startswith("archipelago://"):
-        address = "ws://" + address[len("archipelago://") :]
+        address = "wss://" + address[len("archipelago://") :]
     if "://" not in address:
-        address = "ws://" + address
+        address = "wss://" + address
     parsed = urlparse(address)
     if not parsed.port:
         address = f"{parsed.scheme}://{parsed.hostname}:{DEFAULT_PORT}"
