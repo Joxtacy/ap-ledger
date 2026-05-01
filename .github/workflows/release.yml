@@ -57,7 +57,11 @@ jobs:
 
       - name: Verify the new section has entries
         run: |
-          section=$(git-cliff --config cliff.toml --tag "v${{ inputs.version }}" --current --strip header)
+          # --unreleased: emit the section for the about-to-be-cut tag, i.e.
+          # everything since the previous tag, associated with --tag. Don't use
+          # --current here -- that selects commits belonging to HEAD's tag, and
+          # at this point in the workflow HEAD is not yet tagged (we tag later).
+          section=$(git-cliff --config cliff.toml --tag "v${{ inputs.version }}" --unreleased --strip header)
           # release must contain at least one bullet ("- ..."); otherwise everything
           # since the last tag was filtered out by cliff.toml and there's nothing
           # user-facing to release.
