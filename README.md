@@ -25,6 +25,39 @@ Pre-built binaries for each tagged release are attached to the GitHub Release:
 Older distros or Intel Macs: build from source (below). Static binaries aren't
 a goal here; the release builds come straight off GitHub Actions `*-latest` runners.
 
+## Run from a release archive
+
+If you don't want to touch a terminal, the macOS and Windows archives ship a
+double-click launcher next to the binary. Extract the archive into a folder of
+its own and run the launcher:
+
+| Platform | Double-click               | What happens                                              |
+| -------- | -------------------------- | --------------------------------------------------------- |
+| macOS    | `start.command`            | Opens Terminal.app, prompts for server / slot / password. |
+| Windows  | `start.bat`                | Opens a console window, prompts for server / slot / password. |
+| Linux    | run `./ap-text-client` from a terminal | Same prompts as above.                            |
+
+The first time on macOS, Gatekeeper will refuse the unsigned binary. Clear the
+quarantine bit once after extracting:
+
+```sh
+xattr -d com.apple.quarantine ap-text-client start.command
+```
+
+On Windows, SmartScreen may show "Windows protected your PC" — choose **More
+info → Run anyway**.
+
+If you'd rather pass everything on the command line, the binary takes the same
+arguments as the source build:
+
+```sh
+./ap-text-client archipelago.gg:38281 JoxSlot --password secret
+./ap-text-client ws://localhost:38281 JoxSlot --no-tui
+```
+
+The server prompt remembers your last successful host, so reconnecting is
+typically just Enter, Enter, Enter.
+
 ## Install from source
 
 Managed with [uv](https://docs.astral.sh/uv/). Requires Python 3.11+.

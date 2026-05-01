@@ -88,11 +88,19 @@ jobs:
 
       - name: Package binaries
         run: |
+          # Drop the per-platform double-click launchers next to each binary
+          # before archiving so Finder/Explorer users get a friendly entry
+          # point. Linux gets the binary alone -- desktop launchers there are
+          # distro-specific and most Linux users will run it from a terminal.
+          cp launchers/start.command dist/ap-text-client-macos/start.command
+          cp launchers/start.bat dist/ap-text-client-windows/start.bat
+          chmod +x dist/ap-text-client-linux/ap-text-client \
+                   dist/ap-text-client-macos/ap-text-client \
+                   dist/ap-text-client-macos/start.command
           cd dist
-          chmod +x ap-text-client-linux/ap-text-client ap-text-client-macos/ap-text-client
           tar -C ap-text-client-linux -czf ap-text-client-linux.tar.gz ap-text-client
-          tar -C ap-text-client-macos -czf ap-text-client-macos.tar.gz ap-text-client
-          (cd ap-text-client-windows && zip ../ap-text-client-windows.zip ap-text-client.exe)
+          tar -C ap-text-client-macos -czf ap-text-client-macos.tar.gz ap-text-client start.command
+          (cd ap-text-client-windows && zip ../ap-text-client-windows.zip ap-text-client.exe start.bat)
 
       - name: Build release notes
         uses: orhun/git-cliff-action@v4
