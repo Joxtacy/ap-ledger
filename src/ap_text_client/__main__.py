@@ -5,12 +5,51 @@ import asyncio
 import logging
 import signal
 import sys
+from getpass import getpass
 from pathlib import Path
 
 from . import event_log
 from .names import Names
-from .protocol import ConnectionState, ProtocolClient
+from .protocol import LAST_SERVER_FILE, ConnectionState, ProtocolClient
 from .ui import AppState, StdoutRenderer, TextClientApp
+
+
+def _last_server() -> str | None:
+    try:
+        value = LAST_SERVER_FILE.read_text().strip()
+    except OSError:
+        return None
+    return value or None
+
+
+def _prompt_for_missing(args: argparse.Namespace) -> None:
+    """Fill in any missing connection details from a TTY.
+
+    Lets a user double-click the binary (via the bundled launcher scripts)
+    and type the connection in instead of needing CLI args. Caller is
+    responsible for falling back to argparse's required-arg error when
+    stdin isn't a TTY (CI, pipes), so non-interactive usage still fails
+    fast with a clear message.
+    """
+    print("Connection details (Ctrl+C to cancel):")
+    if not args.server:
+        last = _last_server()
+        prompt = f"Server [{last}]: " if last else "Server (host[:port]): "
+        entry = input(prompt).strip()
+        chosen = entry or last
+        if not chosen:
+            sys.exit("server is required")
+        args.server = chosen
+    if not args.slot:
+        entry = input("Slot name: ").strip()
+        if not entry:
+            sys.exit("slot is required")
+        args.slot = entry
+    if args.password is None:
+        # Empty (just Enter) keeps password=None; a typed value is used as-is.
+        # getpass keeps it off the screen and out of shell history.
+        pw = getpass("Password (leave blank for none): ")
+        args.password = pw or None
 
 
 def parse_args(argv: list[str]) -> argparse.Namespace:
@@ -20,10 +59,18 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     )
     parser.add_argument(
         "server",
+        nargs="?",
+        default=None,
         help="host[:port], ws://host:port, wss://host:port, or archipelago://host:port "
-        "(bare and archipelago:// default to wss; use ws:// for plain WebSocket)",
+        "(bare and archipelago:// default to wss; use ws:// for plain WebSocket). "
+        "Prompted interactively if omitted.",
     )
-    parser.add_argument("slot", help="slot name to connect as")
+    parser.add_argument(
+        "slot",
+        nargs="?",
+        default=None,
+        help="slot name to connect as (prompted interactively if omitted)",
+    )
     parser.add_argument("--password", default=None, help="optional server password")
     parser.add_argument("--team", type=int, default=0, help="team number (default 0)")
     parser.add_argument(
@@ -44,7 +91,13 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
         action="store_true",
         help="disable the persistent event log",
     )
-    return parser.parse_args(argv)
+    args = parser.parse_args(argv)
+    if not args.server or not args.slot:
+        if sys.stdin.isatty():
+            _prompt_for_missing(args)
+        else:
+            parser.error("the following arguments are required: server, slot")
+    return args
 
 
 async def run(args: argparse.Namespace) -> int:
