@@ -15,11 +15,13 @@ def item_ref_from_packet(item: dict | list) -> dict:
 
 
 def is_sent_by_me(packet: dict, my_slot: int) -> bool:
-    """PrintJSON type=ItemSend originating from my world, sent to someone else."""
+    """PrintJSON type=ItemSend originating from my world. Self-sends count
+    too — the location is still one I've checked, so the Sent panel should
+    reflect it even when the receiver is also me."""
     if packet.get("type") not in ("ItemSend", "ItemCheat"):
         return False
     item = item_ref_from_packet(packet.get("item", {}))
-    return item.get("player") == my_slot and packet.get("receiving") != my_slot
+    return item.get("player") == my_slot
 
 
 def is_hint_for_me(packet: dict, my_slot: int) -> bool:
